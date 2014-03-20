@@ -60,7 +60,7 @@ def volatility_stop(data):  #measures volatility stop for 7 day period
 	i=1
 	price_history=[]
 	while i<8:
-		price_history=.append(history(bar_count=i, frequency="1d", field='close_price')) #tuple with closing price i days ago
+		price_history.ppend(history(bar_count=i, frequency="1d", field='close_price')) #tuple with closing price i days ago
 
 	if uptrend:
 		high_close_SIC=max(price_history)
