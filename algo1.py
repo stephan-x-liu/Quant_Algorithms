@@ -57,17 +57,20 @@ def handle_data(context, data):
 		context.already_bought=True 
 		context.last_bought = current_time
 
-	if checker>current_time:
-		if context.uptrend:
-			if data[context.stock].price< volatility:
-				order(context.stock, -50)
-				context.uptrend=False
+	if context.uptrend and checker>current_time:
+		if data[context.stock].price< volatility:
+			order(context.stock, -50)
+			context.uptrend=False
+			context.last_bought = current_time
 
-		if not context.uptrend:
-			if data[context.stock].price>volatility:
-				order(context.stock, 50)
-				context.uptrend=True
-		context.last_bought = current_time
+	if not context.uptrend and checker>current_time:
+		if data[context.stock].price>volatility:
+			order(context.stock, 50)
+			context.uptrend=True
+			context.last_bought = current_time
+		
+	log.info(context.uptrend)
+	log.info(context.portfolio.positions[context.stock])
 
 
 def volatility_stop(context,data):  #measures volatility stop for 7 day period
