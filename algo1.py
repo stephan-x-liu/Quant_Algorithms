@@ -1,8 +1,12 @@
 import datetime
+import time
 
 atr  = ta.ATR(timeperiod = 7)
 bbands = ta.BBANDS(timeperiod = 7)
-
+uptrend = True
+last_bought = None
+upchecker = False
+downchecker = False
 
 def initialize(context):
 	##Trade with stock spy
@@ -11,9 +15,9 @@ def initialize(context):
 	context.calc_inital_trend = True
 	context.high_close_SIC = 0
 	context.low_close_SIC = 999999999
-	context.uptrend = True
 	context.already_bought = False
-	context.last_bought = datetime.datetime(10,10,10,10)
+	context.order_id = None
+    context.last_5 = []
 	## change the context.values?
 	set_universe(universe.DollarVolumeUniverse(floor_percentile=98.0,ceiling_percentile=100.0)) ## sets the universe to the current mode
 
@@ -23,6 +27,10 @@ def initialize(context):
 	# 
 def handle_data(context, data):
 
+	global uptrend
+	global last_bought
+	global upchecker
+	global downchecker
 
 	# money=context.portfolio.MONEY
 	# Implement your algorithm logic here.
@@ -43,33 +51,55 @@ def handle_data(context, data):
 	# TODO: implement your own logic here.
 
 	#this will only order if a volatility boundary is hit 
+
+	
+	
+
 	
 	current_time = data[context.stock].datetime
-	deltatime = datetime.timedelta(minutes=5)
+	deltatime = datetime.timedelta(days = 1)
 	checker = current_time - deltatime
+
+	current_time_time = current_time.time()
+
+	to_buy = False
+	if current_time_time > datetime.time(9,0) or current_time_time<datetime.time(9,10):
+		to_buy = True
+	elif current_time_time > datetime.time(15,30) and current_time_time<datetime.time(15,35):
+		to_buy = True
+
+
 
 	volatility=volatility_stop(context,data)
 	record(vstops = volatility, price = data[context.stock].price)
 
 
-	if context.uptrend and not context.already_bought:
-		order(context.stock, 50)
+	if uptrend and not context.already_bought:
+		context.order_id=order(context.stock, 50)
 		context.already_bought=True 
-		context.last_bought = current_time
+		last_bought = current_time - deltatime - deltatime
+ 
 
-	if context.uptrend and checker>current_time:
+	print("BUY TIME YET?",checker>last_bought)
+
+
+	if uptrend and checker>last_bought and to_buy:
+		print("INSIDE UPTREND LOOP",data[context.stock].price< volatility)
 		if data[context.stock].price< volatility:
-			order(context.stock, -50)
-			context.uptrend=False
-			context.last_bought = current_time
+			print("SELLING STOCK","VSTOP:",volatility,"PRICE",data[context.stock].price)
+			context.order_id=order(context.stock, -50)
+			uptrend=False
+			last_bought = current_time
 
-	if not context.uptrend and checker>current_time:
+	if not uptrend and checker>last_bought and to_buy:
 		if data[context.stock].price>volatility:
-			order(context.stock, 50)
-			context.uptrend=True
-			context.last_bought = current_time
+			print("BUYING STOCK","VSTOP:",volatility,"PRICE",data[context.stock].price)
+			context.order_id=order(context.stock, 50)
+			uptrend=True
+			last_bought = current_time
+
 		
-	log.info(context.uptrend)
+	print("IS UPTREND?",uptrend==True)
 	log.info(context.portfolio.positions[context.stock])
 
 
@@ -81,18 +111,18 @@ def volatility_stop(context,data):  #measures volatility stop for 7 day period
 	# Below calculate the SIC 
 
 
-	price_history = history(bar_count=7, frequency="1d", field='close_price')[context.stock] #tuple with closing price i days ago
-	if context.uptrend:
-		context.high_close_SIC=max(context.high_close_SIC,max(price_history))
+	price_history = history(bar_count=8, frequency="1d", field='close_price')[context.stock] #tuple with closing price i days ago
+	if uptrend:
+		context.high_close_SIC=max(price_history[1:])
 	else:
-		context.low_close_SIC=min(context.low_close_SIC,min(price_history))
+		context.low_close_SIC=min(price_history[1:])
 
 	atr_data = atr(data) # initaliaze the data
 	atr_value=atr_data[context.stock]
 	atr_value*=3 	
 
 	## returns tuple with boolean true for uptrend and the highclose or low close
-	if context.uptrend:
+	if uptrend:
 		return context.high_close_SIC-atr_value
 	return context.low_close_SIC+atr_value
 
