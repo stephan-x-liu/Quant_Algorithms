@@ -52,7 +52,10 @@ def handle_data(context, data):
 
 	#this will only order if a volatility boundary is hit 
 
-	
+	current_time = data[context.stock].datetime.time()
+	if(current_time>time(15,55)):
+		context.last_5=[]
+		return
 	
 
 	
@@ -101,6 +104,7 @@ def handle_data(context, data):
 		
 	print("IS UPTREND?",uptrend==True)
 	log.info(context.portfolio.positions[context.stock])
+
 
 
 def volatility_stop(context,data):  #measures volatility stop for 7 day period
